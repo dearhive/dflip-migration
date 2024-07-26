@@ -33,8 +33,6 @@ class DFlip_Migration_Tools
    */
   public static $instance;
 
-  public $hook;
-
   /**
    * Holds the base DFlip class object.
    *
@@ -44,14 +42,6 @@ class DFlip_Migration_Tools
    */
   public $base;
 
-  /**
-   * Holds the base DFlip class fields.
-   *
-   * @since 1.2.0
-   *
-   * @var object
-   */
-  public $fields;
 
   /**
    * Primary class constructor.
@@ -421,7 +411,7 @@ class DFlip_Migration_Tools
 add_action( 'plugins_loaded', 'load_dflip_migration_tools' );
 function load_dflip_migration_tools(){
   if(class_exists("DFLIP")) {
-// Load the DFlip_Migration_Tools class.
+    // Load the DFlip_Migration_Tools class.
     $dflip_migration_tools = DFlip_Migration_Tools::get_instance();
   }
 }
