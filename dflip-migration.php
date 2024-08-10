@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: DearFlip (dflip) Migration Tool
- * Description: Migrate posts from other viewers to DearFlip
+ * Description: Migrate posts from other viewers to DearFlip (Requires DEARFLIP 2.3+ installed)
  * Version: 1.0
  *
  * Text Domain: DFLIP
@@ -40,7 +40,8 @@ class DFlip_Migration_Tools
    *
    * @var object
    */
-  public $base;
+	public $base;
+	public $hook;
 
 
   /**
@@ -216,7 +217,8 @@ class DFlip_Migration_Tools
       $dflip_migration_result .= "DearPDF Migration:<br>";
       $post_ids = get_posts(array(
         'post_type' => 'dearpdf',
-        'posts_per_page' => -1));
+	      'post_status' => array('publish', 'pending', 'draft', 'auto-draft', 'future', 'private', 'inherit', 'trash'),
+	      'posts_per_page' => -1));
       //then update each post
       foreach ($post_ids as $p) {
         $po = get_post($p->ID);
@@ -231,6 +233,7 @@ class DFlip_Migration_Tools
       $dflip_migration_result .= "DearPDF Undo Migration:<br>";
       $post_ids = get_posts(array(
         'post_type' => 'dflip',
+	      'post_status' => array('publish', 'pending', 'draft', 'auto-draft', 'future', 'private', 'inherit', 'trash'),
         'meta_query' => array(
           array(
             'key' => '_dearpdf_data'
@@ -250,6 +253,7 @@ class DFlip_Migration_Tools
       $dflip_migration_result .= "Re-import Settings:<br>";
       $post_ids = get_posts(array(
         'post_type' => 'dflip',
+	      'post_status' => array('publish', 'pending', 'draft', 'auto-draft', 'future', 'private', 'inherit', 'trash'),
         'meta_query' => array(
           array(
             'key' => '_dearpdf_data'
@@ -260,19 +264,6 @@ class DFlip_Migration_Tools
       foreach ($post_ids as $p) {
         $this->import_dearpdf_post_options($p->ID);
         $dflip_migration_result .= $p->ID . ",<br>";
-      }
-
-    }
-    if (isset($_POST['dflip_migration_tools_migrate_dearpdf_settings'])) {
-      $dflip_migration_result .= "Import Global Settings:<br>";
-      if ( is_multisite() ) {
-        $settings = get_blog_option( null, '_dearpdf_settings', true );
-        // Update options
-        update_blog_option( null, '_dflip_settings', $this->validate_dearpdf_to_dearflip_options($settings) );
-      } else {
-        $settings = get_option( '_dearpdf_settings', true );
-        // Update options
-        update_option( '_dflip_settings', $this->validate_dearpdf_to_dearflip_options($settings) );
       }
 
     }
@@ -287,89 +278,58 @@ class DFlip_Migration_Tools
     update_post_meta($post_id, '_dflip_data', $settings);
   }
 
+  function getValue($array,$key,$default=""){
+   if(isset($array[$key])){
+       return $array[$key];
+   }
+   return $default;
+  }
   function validate_dearpdf_to_dearflip_options($settings, $is_global = false)
   {
+	  if ( empty( $settings ) || !is_array($settings)) {
+		  $settings = array();
+	  }
 
-    if (!$is_global) {
       $settings["source_type"] = 'pdf';
-      $settings["pdf_source"] = $settings["source"];
-      $settings["pdf_thumb"] = $settings["pdfThumb"];
-    }
+      $settings["pdf_source"] = $this->getValue($settings,"source");
+      $settings["pdf_thumb"] = $this->getValue($settings,"pdfThumb");
+
     //viewerType
     //height
-    $settings["bg_color"] = $settings["backgroundColor"];//backgroundColor
-    $settings["bg_image"] = $settings["backgroundImage"];//backgroundImage
-    $settings["enable_download"] = $settings["showDownloadControl"];//showDownloadControl
-    $settings["controls_position"] = $settings["controlsPosition"];//controlsPosition
-    $settings["enable_search"] = $settings["showSearchControl"];//showSearchControl
-    $settings["enable_print"] = $settings["showPrintControl"];//showPrintControl
-    $settings["auto_outline"] = $settings["autoOpenOutline"];//autoOpenOutline
-    $settings["auto_thumbnail"] = $settings["autoOpenThumbnail"];//autoOpenThumbnail
-    $settings["webgl"] = $settings["is3D"];//is3D
-    $settings["cover3DType"] = $settings["has3DCover"];//has3DCover
+    $settings["bg_color"] = $this->getValue($settings,"backgroundColor");//backgroundColor
+    $settings["bg_image"] = $this->getValue($settings,"backgroundImage");//backgroundImage
+    $settings["enable_download"] = $this->getValue($settings,"showDownloadControl");//showDownloadControl
+    $settings["controls_position"] = $this->getValue($settings,"controlsPosition");//controlsPosition
+    $settings["enable_search"] = $this->getValue($settings,"showSearchControl");//showSearchControl
+    $settings["enable_print"] = $this->getValue($settings,"showPrintControl");//showPrintControl
+    $settings["auto_outline"] = $this->getValue($settings,"autoOpenOutline");//autoOpenOutline
+    $settings["auto_thumbnail"] = $this->getValue($settings,"autoOpenThumbnail");//autoOpenThumbnail
+    $settings["webgl"] = $this->getValue($settings,"is3D");//is3D
+    $settings["cover3DType"] = $this->getValue($settings,"has3DCover");//has3DCover
     if ($settings["cover3DType"] !== "global") {
       $settings["cover3DType"] = $settings["cover3DType"] === "true" ? "plain" : "none";
     }
     //color3DCover
-    $settings["auto_sound"] = $settings["enableSound"];//enableSound
+    $settings["auto_sound"] = $this->getValue($settings,"enableSound");//enableSound
     //duration
-    $settings["direction"] = $settings["readDirection"];//readDirection
+    $settings["direction"] = $this->getValue($settings,"readDirection");//readDirection
     if ($settings["direction"] !== "global") {
       $settings["direction"] = $settings["direction"] === "rtl" ? 2 : 1;
     }
-    $settings["page_mode"] = $settings["pageMode"];//pageMode
+    $settings["page_mode"] = $this->getValue($settings,"pageMode");//pageMode
     if ($settings["page_mode"] !== "global") {
       $settings["page_mode"] = $settings["page_mode"] === "auto" ? '0'
         : ($settings["page_mode"] === "single" ? '1' : '2');
     }
-    $settings["single_page_mode"] = $settings["singlePageMode"];//singlePageMode
+    $settings["single_page_mode"] = $this->getValue($settings,"singlePageMode");//singlePageMode
     if ($settings["single_page_mode"] !== "global") {
       $settings["single_page_mode"] = $settings["single_page_mode"] === "auto" ? '0'
         : ($settings["single_page_mode"] === "zoom" ? '1' : '2');
     }
     //disableRange //todo add in dearflip
     //rangeChunkSize //todo add in dearflip
-    $settings["texture_size"] = $settings["maxTextureSize"];
-
-    if ($is_global) {
-      //mobileViewerType
-      //sideMenuOverlay
-      $settings["range_size"] = $settings["rangeChunkSize"];
-      $settings["disable_range"] = $settings["disableRange"];
-      $settings["pdf_version"] = $settings["pdfVersion"];
-      //autoPDFLinktoViewer
-      //thumbLayout
-      $settings["attachment_lightbox"] = $settings["attachmentLightbox"];
-      $settings["padding_left"] = $settings["paddingLeft"];
-      $settings["padding_right"] = $settings["paddingRight"];
-      $settings["padding_top"] = $settings["paddingTop"];
-      $settings["padding_bottom"] = $settings["paddingBottom"];
-      $settings["more_controls"] = $settings["moreControls"];
-      $settings["hide_controls"] = $settings["hideControls"];
-
-
-      $settings["text_toggle_sound"] = $settings["textToggleSound"];
-      $settings["text_toggle_thumbnails"] = $settings["textToggleThumbnails"];
-      $settings["text_toggle_outline"] = $settings["textToggleOutline"];
-      $settings["text_previous_page"] = $settings["textPreviousPage"];
-      $settings["text_next_page"] = $settings["textNextPage"];
-      $settings["text_toggle_fullscreen"] = $settings["textToggleFullscreen"];
-      $settings["text_zoom_in"] = $settings["textZoomIn"];
-      $settings["text_zoom_out"] = $settings["textZoomOut"];
-      $settings["text_toggle_help"] = $settings["textToggleHelp"];
-      $settings["text_single_page_mode"] = $settings["textSinglePageMode"];
-      $settings["text_double_page_mode"] = $settings["textDoublePageMode"];
-      $settings["text_download_PDF_file"] = $settings["textDownloadPDFFile"];
-      $settings["text_goto_first_page"] = $settings["textGotoFirstPage"];
-      $settings["text_goto_last_page"] = $settings["textGotoLastPage"];
-      $settings["text_share"] = $settings["textShare"];
-      $settings["text_mail_subject"] = $settings["textMailSubject"];
-      $settings["text_mail_body"] = $settings["textMailBody"];
-      $settings["text_loading"] = $settings["textLoading"];
-      $settings["text_open_book"] = $settings["textOpenBook"];
-
-
-    }
+    $settings["texture_size"] = $this->getValue($settings,"maxTextureSize");
+    
     return $settings;
   }
 
