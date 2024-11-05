@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: DearFlip (dflip) Migration Tool
- * Description: Migrate posts from other viewers to DearFlip (Requires DEARFLIP 2.3+ installed)
+ * Description: Migrate posts from other viewers to DearFlip.
  * Version: 1.0.1
  *
  * Text Domain: DFLIP
