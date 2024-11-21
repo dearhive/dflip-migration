@@ -2,7 +2,7 @@
 /**
  * Plugin Name: DearFlip (dflip) Migration Tool
  * Description: Migrate posts from other viewers to DearFlip.
- * Version: 1.0.1
+ * Version: 1.0.2
  *
  * Text Domain: DFLIP
  * Author: DearHive
@@ -102,7 +102,7 @@ class DFlip_Migration_Tools {
 	public function shortcode_dearpdfcss( $raw_attr, $content = '' ) {
 		
 		if ( !class_exists( 'DFlip_ShortCode' ) ) {
-			return 'hahaahah';
+			return '';
 		}
 		$dflip_shortcode = DFlip_ShortCode::get_instance();
 		if ( !method_exists( $dflip_shortcode, 'get_post_data' ) ) {
@@ -287,9 +287,11 @@ class DFlip_Migration_Tools {
 			return;
 		}
 		global $dflip_migration_result;
+		global $wpdb;
 		
 		if ( isset( $_POST['dflip_migration_tools_migrate_dearpdf_posts'] ) ) {
 			$dflip_migration_result .= "DearPDF Migration:<br>";
+			$dflip_migration_result .= "<br>Posts: <br>";
 			$post_ids = get_posts( array(
 				'post_type' => 'dearpdf',
 				'post_status' => array( 'publish', 'pending', 'draft', 'auto-draft', 'future', 'private', 'inherit', 'trash' ),
@@ -300,13 +302,42 @@ class DFlip_Migration_Tools {
 				$po->post_type = "dflip";
 				wp_update_post( $po );
 				$this->import_dearpdf_post_options( $p->ID );
-				$dflip_migration_result .= $p->ID . ",<br>";
+				$dflip_migration_result .= $p->ID . " - (" . $p->post_title . ")<br>";
 			}
 			update_option( 'migrated_dearpdf_to_dflip', 'yes' );
+			
+			$terms = get_terms( array(
+				'taxonomy' => 'dearpdf_category',
+				'hide_empty' => false
+			) );
+			if ( $terms ) {
+				$dflip_migration_result .= "<br><hr><br>Categories: <br>";
+				foreach ( $terms as $term ) {
+					update_term_meta( $term->term_id, "is_dearpdf_term", 'yes' );
+					$fallback_meta = get_term_meta( $term->term_id, "is_dearpdf_term" );
+					if ( !empty( $fallback_meta ) ) {
+						$update_term = $wpdb->update(
+							$wpdb->prefix . 'term_taxonomy',
+							[ 'taxonomy' => 'dflip_category' ],
+							[ 'term_taxonomy_id' => $term->term_taxonomy_id ],
+							[ '%s' ],
+							[ '%d' ]
+						);
+						if ( $update_term ) {
+							$dflip_migration_result .= $term->term_id . " - (" . $term->name . ")<br>";
+							clean_term_cache( $term->term_id );
+						}
+						else {
+							$dflip_migration_result .= $term->term_id . " - (" . $term->name . ") Failed<br>";
+						}
+					}
+				}
+			}
 		}
 		
 		if ( isset( $_POST['dflip_migration_tools_unmigrate_dearpdf_posts'] ) ) {
 			$dflip_migration_result .= "DearPDF Undo Migration:<br>";
+			$dflip_migration_result .= "<br>Posts: <br>";
 			$post_ids = get_posts( array(
 				'post_type' => 'dflip',
 				'post_status' => array( 'publish', 'pending', 'draft', 'auto-draft', 'future', 'private', 'inherit', 'trash' ),
@@ -321,9 +352,38 @@ class DFlip_Migration_Tools {
 				$po = get_post( $p->ID );
 				$po->post_type = "dearpdf";
 				wp_update_post( $po );
-				$dflip_migration_result .= $p->ID . ",<br>";
+				$dflip_migration_result .= $p->ID . " - (" . $p->post_title . ") ,<br>";
 			}
 			update_option( 'migrated_dearpdf_to_dflip', 'no' );
+			
+			
+			$terms = get_terms( array(
+				'taxonomy' => 'dflip_category',
+				'hide_empty' => false,
+				'meta_key' => 'is_dearpdf_term'
+			) );
+			if ( $terms ) {
+				$dflip_migration_result .= "<br><hr><br>Categories:<br>";
+				foreach ( $terms as $term ) {
+					
+					if ( !empty( $term ) ) {
+						$update_term = $wpdb->update(
+							$wpdb->prefix . 'term_taxonomy',
+							[ 'taxonomy' => 'dearpdf_category' ],
+							[ 'term_taxonomy_id' => $term->term_taxonomy_id ],
+							[ '%s' ],
+							[ '%d' ]
+						);
+						if ( $update_term ) {
+							$dflip_migration_result .= $term->term_id . " - (" . $term->name . ")<br>";
+							clean_term_cache( $term->term_id );
+						}
+						else {
+							$dflip_migration_result .= $term->term_id . " - (" . $term->name . ") Failed<br>";
+						}
+					}
+				}
+			}
 		}
 		
 		if ( isset( $_POST['dflip_migration_tools_re_import_dearpdf_posts'] ) ) {
